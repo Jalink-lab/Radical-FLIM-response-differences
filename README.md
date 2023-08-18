@@ -9,11 +9,11 @@ Input files:
 - .fli files from the Lambert Instruments Frequency-Domain FLIM microscope
 
 Brief workflow: 			  
-  ► Segment cells (create labelmap) using Cellpose
-  ► Measure the intensity-weighted lifetime of all labels
-  ► Display the lifetime traces in a graph
-  ► Display the lifetime traces in a kymograph-like image
-  ► Display the average lifetime trace of all labels (solid black line)
+- Segment cells (create labelmap) using Cellpose
+- Measure the intensity-weighted lifetime of all labels
+- Display the lifetime traces in a graph
+- Display the lifetime traces in a kymograph-like image
+- Display the average lifetime trace of all labels (solid black line)
 
 Requires the following update sites:
 - CLIJ
