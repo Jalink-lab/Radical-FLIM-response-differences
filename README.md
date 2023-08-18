@@ -4,9 +4,9 @@ This repository contains an ImageJ Macro to measure and display fluorescence lif
 
 # ImageJ Macro
 Input files:
-► 2-channel .tif files representing two lifetime-components measured with TCSPC (e.g. files exported from Stellaris/SP8)
+- 2-channel .tif files representing two lifetime-components measured with TCSPC (e.g. files exported from Stellaris/SP8)
   Optionally a third channel with a nuclear marker			
-► .fli files from the Lambert Instruments Frequency-Domain FLIM microscope
+- .fli files from the Lambert Instruments Frequency-Domain FLIM microscope
 
 Brief workflow: 			  
   ► Segment cells (create labelmap) using Cellpose
