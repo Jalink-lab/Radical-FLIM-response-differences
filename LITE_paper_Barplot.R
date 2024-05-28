@@ -39,7 +39,7 @@ plot
 
 bar_plot <- plot
 bar_plot <- ggplot() +
-  draw_plot(combi_plot, width = 1, height = 1)
+  draw_plot(bar_plot, width = 1, height = 1)
 
 bar_plot
 
