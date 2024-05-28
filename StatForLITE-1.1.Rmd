@@ -1,0 +1,488 @@
+---
+title: "Stats for LITE"
+author: "Kees Jalink"
+date: "2024-01-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+In this document, statistical analysis of the differences observed in the data used to construct the figures are summarized. Statistical significances are denoted: '* ' : p<0.05; '** ' : p<0.01; '*** ' : p<0.001; '**** ': p<0.0001; '***** ': p<0.00001; 'n.s.' = not significant. 
+
+Note that timepoints of stimulation of the experiments were dependent on establishing a stable baseline and therefore, these timepoints may vary from experiment to experiment. That is reflected in the choices of timepoints on which the actual test statistics were based.  
+
+Before starting, we define some functions to extract data rows from the data frames. Every column is a cell, and rows represent the data points in the timelapse. To extract the lifetimes of all cells at a timepoint:
+
+```{r take a row (timepoint)}
+ExtractRowIntoArray <- function(df, time){
+  timeStep <- as.numeric(df[2,1]-df[1,1])   # Determine the timestep of the timelapse series
+  rowNr <- round(time/timeStep)  # Calculate at which row these data are
+  nCol <- as.numeric(ncol(df))
+  Out<-as.numeric(df[rowNr,2:nCol]     )        #extract the data into a numeric array
+  return(Out)
+}
+```
+
+To quantify decay rates, which is necessary when comparing data taken with dissimilar setups to avoid small systematic differences in calculated lifetimes:
+
+```{r take differences between 2 rows (timepoints)}
+GetDecay <-function(df, time1, time2){
+  pre <- ExtractRowIntoArray(df, time1)
+  post <- ExtractRowIntoArray(df, time2)
+  diff <- pre - post
+  return(diff)
+}
+```
+
+To get out descriptive statistics and compare significance with Wilcoxon unpaired test:
+
+```{r Stats}
+Stats <- function(array1, array2){
+  if (missing(array1) || missing(array2)) {
+    stop("Both arguments must be supplied.")
+  }
+  cat("Mean for: array1 ", mean(array1), "        for: array2 ", mean(array2), "\n")
+  cat("Var  for: array1 ", var(array1), "        for: array2 ", var(array2), "\n")
+
+  # Perform Wilcoxon rank-sum test
+  wilcox_test_result <- wilcox.test(array1, array2)
+  w <- wilcox_test_result$p.value
+
+  p = "data do not differ significantly"
+  if (w < 0.00001){
+    p = "significance = ***** "
+  }
+  else if (w < 0.0001){
+    p = "significance = **** "
+  }
+  else if (w < 0.001){
+    p = "significance = *** "
+  }
+  else if (w < 0.01){
+    p = "significance = ** "
+  }
+  else if (w < 0.05){
+    p = "significance = * "
+  }
+  p = paste("=====>>>>>>>>    ",p,"    <<<<<<<<======")
+
+  return(list(Wilcox = wilcox_test_result, P = p))
+}
+
+```
+
+For testing more than one condition, e.g. no pretreatment VS 2 min VS 4 min pretreatment, we use the Kruskal-Wallis test, which is also parameter-free:
+
+```{r StatsKruskal}
+StatsKruskal <- function(list_of_arrays){
+  #function expects a list of data arrays and will determine mean and variance of these arrays, as well as do a K-W test
+  if (length(list_of_arrays)<3){
+    stop("list of minimally 3 arrays required for Kruskal-Wallis test")
+  }
+  
+  for (array in list_of_arrays){
+    cat("Mean ", mean(array),"          Var ", var(array), "\n")
+  }
+
+  # Perform kruskal-wallis test
+  kruskal_test_result <- kruskal.test(list_of_arrays)
+  w <- kruskal_test_result$p.value
+
+  p = "data do not differ significantly"
+  if (w < 0.00001){
+    p = "significance = ***** "
+  }
+  else if (w < 0.0001){
+    p = "significance = **** "
+  }
+  else if (w < 0.001){
+    p = "significance = *** "
+  }
+  else if (w < 0.01){
+    p = "significance = ** "
+  }
+  else if (w < 0.05){
+    p = "significance = * "
+  }
+  p = paste("=====>>>>>>>>    ",p,"    <<<<<<<<======")
+
+  return(list(kruskal = kruskal_test_result, P = p))
+}
+
+```
+
+Finally, we set a common working directory for data files.
+```{r Working Directory}
+wd = 'D:\\LocalSurfDrive\\FF\\Figures_data\\INPUT_CSVS_FINAL\\'  #input data files are supposed to be in this folder.
+```
+
+================================================================
+
+## Figure 1. Test for transientness of timelapse signals.
+Each trace consists of a series of lifetime values. For transient signals, the values just after stimulation are higher than at a later timepoint:
+
+### For HeLa cells:
+Compare the data of Fig. 1A (fdFLIM) to those of Fig. 1B (TCSPC). Stimulation data are taken at t = 135 s and return data are at y = 475 s in A, and at 150 s and 490 s in B. Tested is by what amount the lifetime has decayed over the indicated period, i.e. the teststatistic is the (lifetimes at 135 s - those at 475).
+
+```{r Stats Fig 1A,B}
+FigA <- paste(wd,"Fd_HeLa_Normal_light_Fig1A.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')  
+FigB <- paste(wd,"1_HeLaH201_40nMIP_sustained_confocal_option2_Fig1B.csv",sep="") # get data 
+df_B  <- read.csv(FigB, sep = ',')  
+
+A <- GetDecay(df_A, 135, 475)
+B <- GetDecay(df_B, 150, 490)
+
+S <- Stats(A, B)
+print(S$Wilcox)
+print(S$P)
+```
+### For COS cells:
+Compare the data of Fig. 1C (fdFLIM) to those of Fig. 1D (TCSPC). Stimulation data are taken at t = 200 s and return data are at y = 500 s in A, and at 175 s and 800 s in B. Teststatistic: decay of signal over the indicated timespan. Note that in D, even after extended time, 625 s after stimulation, the TCSPC data did not decay. 
+
+```{r Stats Fig 1C,D}
+FigA <- paste(wd,"Fd_Cos7H250_transient_plotted_till_900s_Fig1C.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')  
+FigB <- paste(wd,"1_Cos7H250_40nMIP_sustained_confocal_Fig1D.csv",sep="") # get data 
+df_B  <- read.csv(FigB, sep = ',')  
+
+A <- GetDecay(df_A, 200, 500)
+B <- GetDecay(df_B, 175, 800)
+
+S <- Stats(A, B)
+print(S$Wilcox)
+print(S$P)
+```
+## Figure 2. Test for differences in lifetimes upon shift to adjacent FOV.
+Test statistic is the lifetime at the end of the traces in the upper graph, versus the beginning of the traces taken just after shifting the FOV (lower graph).
+
+```{r Stats Fig 2}
+FigA <- paste(wd,"Fd_HeLa_shift_exp_part1_Fig2.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')  
+FigB <- paste(wd,"Fd_HeLa_shift_exp_part2_Fig2.csv",sep="") # get data 
+df_B  <- read.csv(FigB, sep = ',')  
+
+A <- ExtractRowIntoArray(df_A, 230)
+B <- ExtractRowIntoArray(df_B, 5)
+
+S <- Stats(A, B)
+print(S$Wilcox)
+print(S$P)
+```
+
+## Figure 3. Test for differences in transientness.
+### Panel A versus B, HeLa cells:
+
+Compare the data of Fig. 3A (fdFLIM) to those of Fig. 3B (fdFLIM with ND filter). Stimulation data are taken at t = 50 s and return data are taken 100 s later in A, and at 115 s with return values 100 s later in B. Teststatistic: decay of signal over the indicated timespan.
+
+```{r Stats Fig 3A,B}
+FigA <- paste(wd,"Fd_HeLaH201_transient_Fig3A.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')  
+FigB <- paste(wd,"Fd_HeLa_Low light_trial2_Fig3B.csv",sep="") # get data
+df_B  <- read.csv(FigB, sep = ',')  
+
+A <- GetDecay(df_A, 50, 150)
+B <- GetDecay(df_B, 115, 215)
+
+S <- Stats(A, B)
+print(S$Wilcox)
+print(S$P)
+```
+
+### Panel C versus D, COS cells:
+
+Compare the data of Fig. 3C (fdFLIM) to those of Fig. 3D (fdFLIM with ND filter). Stimulation data are taken at t = 170 s and return data are taken 800 s later in C, and at 240 s with return values 800 s later in D. Teststatistic: decay of signal over the indicated timespan.
+
+```{r Stats Fig 3C,D}
+FigA <- paste(wd,"Fd_Cos7_Normal_light_0.77_multiplied_Fig3C.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')  
+FigB <- paste(wd,"Fd_Cos7_Low_light_Fig3D.csv",sep="") # get data 
+df_B  <- read.csv(FigB, sep = ',')  
+
+A <- 0.77 * GetDecay(df_A, 170, 970) # note the one-time correction factor of 0.77 for calibration mistake, see Results section.
+B <- GetDecay(df_B, 240, 1040)
+
+S <- Stats(A, B)
+print(S$Wilcox)
+print(S$P)
+```
+Please note that a p value = 2.2 e-16, which occurs several times in our tests, in R is convention to indicate that it is extremely small.
+
+### Panel E versus F, COS cells, with/without LED illumination:
+
+Compare the data of Fig. 3E (TCSPC) to those of Fig. 3F (TCSPC with LED illumination). Stimulation data are taken at t = 240 s and return data are taken 500 s later in E, and at 200 s with return values 500 s later in F. Teststatistic: decay of signal over the indicated timespan.
+
+```{r Stats Fig 3E,F}
+FigA <- paste(wd,"1_Cos7H250_40nMIP_sustained_confocal_Fig3E.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')  
+FigB <- paste(wd,"4_Cos7H250_40nMIP_transient_confocal_option_3_Fig3F.csv",sep="") # get data 
+df_B  <- read.csv(FigB, sep = ',')  
+
+A <- GetDecay(df_A, 240, 740)
+B <- GetDecay(df_B, 200, 700)
+
+S <- Stats(A, B)
+print(S$Wilcox)
+print(S$P)
+```
+
+## Figure 5D. Comparison of rescue by ascorbic acid:
+Data in the presence of a.a. are compared to control, i.e. the data of Figure 3F. Teststatistic: decay of signal over the indicated timespan. Data from both 3F and 5D are taken at 200 s and 500 s later.
+
+```{r Stats Fig. 5D}
+FigA <- paste(wd,"4_Cos7H250_40nMIP_transient_confocal_option_3_Fig3F.csv",sep="") # get data
+df_A  <- read.csv(FigA, sep = ',')  
+FigB <- paste(wd,"8_Cos7H250_40nMIP_sustained_AA_rescue_confocal_option2_Fig5D.csv",sep="") # get data
+df_B  <- read.csv(FigB, sep = ',')  
+
+A <- GetDecay(df_A, 200, 700)
+B <- GetDecay(df_B, 200, 700)
+
+S <- Stats(A, B)
+print(S$Wilcox)
+print(S$P)
+```
+
+## Figure 6. Decay rates under various conditions.
+### Figure 6A:
+Following uncaging of cAMP, lifetime values decay from a level that depends on the previous baseline. For fair comparison, because breakdown is exponential, we compare decay speed starting at identical lifetimes within the cAMP decay curve, i.e. we test significance between peak 1 Vs 2, peak 2 vs 3 and peak 1 vs 3 at timepoints 55 s, 355 s and 786 s for peak 1, 2 and 3, respectively. Note that correction for multiple testing was not necessary because as expected, these data are not significantly different.
+
+```{r 6A}
+
+ FigA <-paste(wd,"10_caged_experiment_data_Fig6A.csv",sep="") # get data
+ df_A  <- read.csv(FigA, sep = ',')  
+ 
+ A <- GetDecay(df_A, 65, 165)
+ B <- GetDecay(df_A, 380, 480)
+ C <- GetDecay(df_A, 800, 900)
+ 
+ S <- Stats(A, B)
+ print(S$Wilcox)
+ print(S$P)
+ 
+ S <- Stats(A, C)
+ print(S$Wilcox)
+ print(S$P)
+ 
+ S <- Stats(B, C)
+ print(S$Wilcox)
+ print(S$P)
+```
+
+
+### Figure 6B. Comparison of the effect of blue light given before or during stimulation with isoproterenol:
+
+Blue light given before IsoP does not affect cAMP generation. Increase in lifetime is detected as the difference of baseline values at t = 50 and stimulated values at t = 500, as compared to control data taken from Fig. 3E at t = 100 s and t = 550 s. Teststatistic: increase in signal upon IsoP administration.
+
+```{r Stats Fig. 6B}
+FigA <- paste(wd,"1_Cos7H250_40nMIP_sustained_confocal_Fig3E.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')  
+FigB <- paste(wd,"10_Cos7H250_40nMIP_shining_light_before_stimulation_Fig6B.csv",sep="") # get data 
+df_B  <- read.csv(FigB, sep = ',')  
+
+A <- GetDecay(df_A, 100, 550)
+B <- GetDecay(df_B, 50, 500)
+
+S <- Stats(A, B)
+print(S$Wilcox)
+print(S$P)
+```
+
+## Figure 7. Different agonists.
+### Panel A versus B: Norepinephrin with and without LED illumination:
+Drop in lifetime is detected as the difference of values at t = 230 and 500 s later. Teststatistic: decay of signal after stimulation.
+
+```{r Stats Fig. 7A, B}
+FigA <- paste(wd,"11_Cos7H250_200nMNE_in_FB_only_Fig7A.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')  
+FigB <- paste(wd,"11_Cos7H250_200nMNE_in_FB_LED_2mins_Fig7B.csv",sep="") # get data 
+df_B  <- read.csv(FigB, sep = ',')  
+
+A <- GetDecay(df_A, 230, 730)
+B <- GetDecay(df_B, 230, 730)
+
+S <- Stats(A, B)
+print(S$Wilcox)
+print(S$P)
+```
+
+### Panel C versus D: Adrenalin with and without LED illumination:
+Drop in lifetime is detected as the difference of values at t = 200 and 600 s later. Teststatistic: decay of signal after stimulation.
+
+```{r Stats Fig. 7C, D}
+FigA <- paste(wd,"11_Cos7H250_250nMAdre_in_FB_only_Fig7C.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')  
+FigB <- paste(wd,"11_Cos7H250_250nMAdre_in_FB_LED_2mins_Fig7D.csv",sep="") # get data 
+df_B  <- read.csv(FigB, sep = ',')  
+
+A <- GetDecay(df_A, 200, 800)
+B <- GetDecay(df_B, 200, 800)
+
+S <- Stats(A, B)
+print(S$Wilcox)
+print(S$P)
+```
+### Panel E versus F: Prostaglandin with and without LED illumination.
+Drop in lifetime is detected as the difference of values at t = 240 and 500 s later. Teststatistic: decay of signal after stimulation.
+
+```{r Stats Fig. 7E, F}
+FigA <- paste(wd,"11_Cos7H250_200nMPGE-1_in_FB_only_Fig7E.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')  
+FigB <- paste(wd,"11_Cos7H250_200nMPGE-1_in_FB_LED_2mins_Fig7F.csv",sep="") # get data 
+df_B  <- read.csv(FigB, sep = ',')  
+
+A <- GetDecay(df_A, 240, 740)
+B <- GetDecay(df_B, 240, 740)
+
+S <- Stats(A, B)
+print(S$Wilcox)
+print(S$P)
+```
+
+## Figure 8. Control versus pre-illuminated agonists.
+### Panel A vs B vs C: Isoproterenol with 0 s (control), 2 min or 6 min of LED illumination:
+Absolute lifetimes at t = 300 are compared, noting that between these experiments, stimulation was at identical timepoints. Teststatistic: lifetime value.
+
+```{r Stats Fig. 8A, B, C}
+FigA <- paste(wd,"12_Cos7H250_40nMIP_degradation_0mins_eppie_Fig8A.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 300)
+dataList <- list(array1 = A)
+
+FigA <- paste(wd,"T0479_12_Cos7H250_40nMIP_degradation_2mins_eppie_Fig8B.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 300)
+dataList <- append(dataList, list(array2 = A))
+
+FigA <- paste(wd,"T0380_12_Cos7H250_40nMIP_degradation_6mins_eppie_Fig8C.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 300)
+dataList <- append(dataList, list(array3 = A))
+
+S <- StatsKruskal(dataList)
+print(S$kruskal)
+print(S$P)
+```
+
+### Panel 8E vs 8F vs control: 7A: Norepinephrin with 0 s (control), 2 min or 6 min of LED illumination:
+Absolute lifetimes at t = 300 are compared, noting that between these experiments, stimulation was identical timepoints. Teststatistic: lifetime value.
+
+```{r Stats Fig. 7A, 8E, 8F}
+FigA <- paste(wd,"11_Cos7H250_200nMNE_in_FB_only_Fig7A.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 300)
+dataList <- list(array1 = A)
+
+FigA <- paste(wd,"T0455_13_Cos7H250_200nMNE_degradation_2mins_eppie_Fig8E.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 300)
+dataList <- append(dataList, list(array2 = A))
+
+FigA <- paste(wd,"T0405_13_Cos7H250_200nMNE_degradation_6mins_eppie_Fig8F.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 300)
+dataList <- append(dataList, list(array3 = A))
+
+S <- StatsKruskal(dataList)
+print(S$kruskal)
+print(S$P)
+```
+
+### Panel 7C vs 8G vs 8H: Adrenalin with 0 s (control), 2 min or 6 min of LED illumination:
+Absolute lifetimes at t = 300 are compared, noting that between these experiments, stimulation was at identical timepoints. Teststatistic: lifetime value.
+
+```{r Stats Fig. 7C, 8G, 8H}
+FigA <- paste(wd,"11_Cos7H250_250nMAdre_in_FB_only_Fig7C.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 300)
+dataList <- list(array1 = A)
+
+FigA <- paste(wd,"T0340_13_Cos7H250_250nMAdre_degradation_2mins_eppie_Fig8G.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 300)
+dataList <- append(dataList, list(array2 = A))
+
+FigA <- paste(wd,"T0425_13_Cos7H250_250nMAdre_degradation_6mins_eppie_Fig8H.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 300)
+dataList <- append(dataList, list(array3 = A))
+
+S <- StatsKruskal(dataList)
+print(S$kruskal)
+print(S$P)
+```
+
+### Panel 7E vs 8I vs 8J: Prostaglandin with 0 s (control), 2 min or 6 min of LED illumination:
+Absolute lifetimes at timepoint of maximum stimulation are compared. Teststatistic: lifetime value.
+
+```{r Stats Fig. 7E, 8I, 8J}
+FigA <- paste(wd,"11_Cos7H250_200nMPGE-1_in_FB_only_Fig7E.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 180)
+dataList <- list(array1 = A)
+
+FigA <- paste(wd,"T0406_13_Cos7H250_200nMPGE-1_degradation_2mins_eppie_Fig8I.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 180)
+dataList <- append(dataList, list(array2 = A))
+
+FigA <- paste(wd,"T0406_13_Cos7H250_200nMPGE-1_degradation_6mins_eppie_Fig8J.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 200)
+dataList <- append(dataList, list(array3 = A))
+
+S <- StatsKruskal(dataList)
+print(S$kruskal)
+print(S$P)
+```
+
+## Figure 10. Effects of Folic acid.
+### Panel A vs B vs C: Isoproterenol stimulation with 0 s (control), 2 min and 6 min of exposure to LED light:
+Responses after stimulation, just before addition of forskolin are compared. Teststatistic: lifetime value.
+
+```{r Stats Fig. 10A, B, C}
+FigA <- paste(wd,"14_Cos7H250_40nMIP_degradation_0mins_eppie_HBS++_FA_Fig10A.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 400)
+dataList <- list(array1 = A)
+
+FigA <- paste(wd,"T0425_14_Cos7H250_40nMIP_degradation_2mins_eppie_HBS++_FA_Fig10B.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 400)
+dataList <- append(dataList, list(array2 = A))
+
+FigA <- paste(wd,"T0531_14_Cos7H250_40nMIP_degradation_6mins_eppie_HBS++_FA_Fig10C.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 400)
+dataList <- append(dataList, list(array3 = A))
+
+S <- StatsKruskal(dataList)
+print(S$kruskal)
+print(S$P)
+```
+
+### Panel E vs F vs G: Isoproterenol in saline with folic acid w/wo LED illumination, and rescue by inclusion of ascorbic acid:
+Responses after stimulation and upon subsequent exposure to LED light are compared. Teststatistic: lifetime value.
+
+```{r Stats Fig. 8E, F, G}
+FigA <- paste(wd,"15_Cos7H250_40nMIP_sustained_LED_2mins_HBS++_only_cut_to_997s_Fig10E.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 750)
+dataList <- list(array1 = A)
+
+FigA <- paste(wd,"15_Cos7H250_40nMIP_LED_2mins_HBS++_FA_option3_Fig10F.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 750)
+dataList <- append(dataList, list(array2 = A))
+
+FigA <- paste(wd,"15_Cos7H250_40nMIP_sustained_LED_2mins_HBS++_FA_AA_RESCUE_cut_to_997s_Fig10G.csv",sep="") # get data 
+df_A  <- read.csv(FigA, sep = ',')
+A <- ExtractRowIntoArray(df_A, 750)
+dataList <- append(dataList, list(array3 = A))
+
+S <- StatsKruskal(dataList)
+print(S$kruskal)
+print(S$P)
+```
+
