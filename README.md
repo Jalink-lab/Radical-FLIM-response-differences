@@ -1,6 +1,6 @@
 # FLIM-timelapse-traces
 
-This repository contains an ImageJ Macro to measure and display fluorescence lifetimes of individual cells in time-lapse experiments, and a few R-scripts to further visualize the data.
+This repository contains an ImageJ Macro to measure and display fluorescence lifetimes of individual cells in time-lapse experiments, and a few R-scripts to further visualize the data. The Stats.Rmd file contains all the statistics done in the paper, with the output in `Stats for LITE.pdf`.
 
 # ImageJ Macro
 Input files:
