@@ -1,6 +1,7 @@
 # FLIM-timelapse-traces
 
 This repository contains an ImageJ Macro to measure and display fluorescence lifetimes of individual cells in time-lapse FLIM experiments (`Analyze_FLIM_timelapse_experiments_FOR_LITE_PAPER.ijm`), and a few R-scripts to further visualize the data, as used in the paper "‘Radical’ differences between two FLIM microscopes affect interpretation of cell signaling dynamics". The R Markdown file `StatsForLITE-1.1.Rmd` contains all the statistics done in the paper, with the output in `Stats for LITE.pdf`.
+
 `Segment_cell_and_display_FLIM_traces.ijm` is a slightly cleaner version of the imageJ macro, with exactly the same functionality.
 
 # ImageJ Macro
